@@ -11,15 +11,20 @@ app.secret_key = 'secret*xxx*secret'
 @app.route('/oauth/<action>/', methods=['POST'])
 def oauth(action=None):
     if action is None:
-        return jsonify(code=400, message="No Action URI is mentioned."), 400
+        return Oauth1Errors.not_found('There is no valid resource here')
     elif action == 'access_token':
         Oauth1.BASE_URL = BASE_URL
 
         cons_check = Oauth1.authorize_consumer()
         if isinstance(cons_check, str):
-            return Oauth1Errors.unauthorized(cons_check)
+            return Oauth1Errors.forbidden(cons_check)
 
+        # TODO: Verify OAuth signature
 
+        # Check username/password from XAuth
+        x_check = Oauth1.authorize_xauth()
+        if isinstance(x_check, str):
+            return Oauth1Errors.bad_request(x_check)
 
         return jsonify(status='ok')
 

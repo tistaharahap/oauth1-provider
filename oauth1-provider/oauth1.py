@@ -1,16 +1,41 @@
-from flask import request, jsonify
+from flask import request, Response, url_for
 import redis, uuid, json
 
 
 class Oauth1(object):
     BASE_URL = None
+    with_user_tokens = False
 
     def __init__(self, base_url):
         self.BASE_URL = base_url
 
     @classmethod
+    def authorize_xauth(cls):
+        post = request.form
+
+        if not 'x_auth_username' in post:
+            return 'XAuth username is mandatory'
+
+        if not 'x_auth_password' in post:
+            return 'XAuth password is mandatory'
+
+        if not 'x_auth_mode' in post:
+            return 'Please specify explicitly XAuth method'
+
+        if post['x_auth_mode'] != 'client_auth':
+            return 'XAuth mode supported is client_auth only'
+
+        return True
+
+    # Subclass this method to provide XAuth
+    @classmethod
+    def _verify_xauth_credentials(cls, username, password):
+        return True
+
+    @classmethod
     def authorize_consumer(cls):
         post = request.form
+        get = request.args
         store = Oauth1StoreRedis()
 
         if 'realm' in post and post['realm'] != cls.BASE_URL:
@@ -22,8 +47,11 @@ class Oauth1(object):
         if not ('oauth_signature_method' in post and post['oauth_signature_method'] == 'HMAC-SHA1'):
             return 'Supported OAuth Signature Method is only HMAC-SHA1, must be explicitly defined'
 
-        if not 'oauth_signature' in post:
+        if not 'oauth_signature' in get:
             return 'OAuth Signature is required'
+
+        if not get['oauth_signature']:
+            return 'OAuth Signature must not be empty'
 
         if not 'oauth_timestamp' in post:
             return 'OAuth Timestamp is required'
@@ -36,6 +64,9 @@ class Oauth1(object):
 
         if not ('oauth_version' in post and post['oauth_version'] == '1.0'):
             return 'Supported OAuth version is 1.0'
+
+        if 'oauth_token' in post and post['oauth_token']:
+            cls.with_user_tokens = True
 
         return True
 
@@ -96,15 +127,35 @@ class Oauth1StoreRedis(object):
             return False
 
 class Oauth1Errors(object):
+    BASE_URL = None
+
+    def __init__(self):
+        self.BASE_URL = Oauth1.BASE_URL
+
+    @classmethod
+    def create_response(cls, code, msg):
+        data = {
+            'code': code,
+            'message': msg
+        }
+        headers = {
+            'WWW-Authenticate': 'OAuth realm="%s"' % request.host_url,
+            'Server': 'Python OAuth Provider'
+        }
+        return Response(response=json.dumps(data), mimetype='application/json', headers=headers, status=int(code))
 
     @classmethod
     def bad_request(cls, msg='Bad Request'):
-        return jsonify(code=400, message=msg), 400
+        return Oauth1Errors.create_response(400, msg)
 
     @classmethod
     def unauthorized(cls, msg='Unauthorized to access this resource'):
-        return jsonify(code=401, message=msg), 401
+        return Oauth1Errors.create_response(401, msg)
+
+    @classmethod
+    def forbidden(cls, msg='Forbidden to consume this resource'):
+        return Oauth1Errors.create_response(403, msg)
 
     @classmethod
     def not_found(cls, msg='Cannot find the resource you are looking for'):
-        return jsonify(code=404, message=msg), 404
+        return Oauth1Errors.create_response(404, msg)
