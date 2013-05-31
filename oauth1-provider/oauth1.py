@@ -13,7 +13,7 @@ class Oauth1(object):
         post = request.form
         store = Oauth1StoreRedis()
 
-        if not ('realm' in post and post['realm'] == cls.BASE_URL):
+        if 'realm' in post and post['realm'] != cls.BASE_URL:
             return 'The realm must match this server\'s Base URL'
 
         if not ('oauth_consumer_key' in post and store.is_valid_consumer_key(post['oauth_consumer_key'])):
