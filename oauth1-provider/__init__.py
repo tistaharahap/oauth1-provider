@@ -6,9 +6,8 @@ BASE_URL = "http://localhost:5000/"
 app = Flask(__name__)
 app.secret_key = 'secret*xxx*secret'
 
-
 @app.route('/oauth/', methods=['GET', 'POST'])
-@app.route('/oauth/<action>/', methods=['POST'])
+@app.route('/oauth/<action>', methods=['POST'])
 def oauth(action=None):
     if action is None:
         return Oauth1Errors.not_found('There is no valid resource here')
@@ -20,6 +19,9 @@ def oauth(action=None):
             return Oauth1Errors.forbidden(cons_check)
 
         # TODO: Verify OAuth signature
+        authorized = Oauth1.authorize_request()
+        if isinstance(authorized, str):
+            return Oauth1Errors.unauthorized(authorized)
 
         # Check username/password from XAuth
         x_check = Oauth1.authorize_xauth()
@@ -27,6 +29,10 @@ def oauth(action=None):
             return Oauth1Errors.bad_request(x_check)
 
         return jsonify(status='ok')
+
+@app.errorhandler(404)
+def not_found(error):
+    return Oauth1Errors.not_found()
 
 if __name__ == "__main__":
     app.debug = True

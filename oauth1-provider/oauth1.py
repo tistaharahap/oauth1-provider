@@ -1,5 +1,6 @@
 from flask import request, Response
-import redis, uuid, json
+from hashlib import sha1
+import redis, uuid, json, operator, urllib2, hmac, binascii
 
 
 class Oauth1(object):
@@ -8,6 +9,58 @@ class Oauth1(object):
 
     def __init__(self, base_url):
         self.BASE_URL = base_url
+
+    @classmethod
+    def authorize_request(cls):
+        auth_headers = request.headers['Authorization'].replace('OAuth ', '').replace(', ', ',').split(',')
+        auth_headers = {cls.url_decode(couple[0]): cls.url_decode(couple[1][1:][:-1])
+                        for couple in [field.split('=') for field in auth_headers]}
+
+        post = request.form
+        get = request.args
+
+        postget = {k: v for (k, v) in post.iteritems()}
+        if get:
+            postget.update({k: v for (k, v) in get.iteritems()})
+
+        postget.update(auth_headers)
+        postget = sorted(postget.iteritems(), key=operator.itemgetter(0))
+
+        method = request.method.upper()
+        base_signature = "%s&" % method
+        for (k, v) in postget:
+            base_signature = "%s%s=%s&" % (base_signature, cls.url_encode(k), cls.url_encode(v))
+        base_signature = base_signature[:-1]
+
+        store = Oauth1StoreRedis()
+        signature = cls.generate_signature(base_sig=base_signature,
+                                           cons_sec=store.get_consumer_secret(auth_headers['oauth_consumer_key']))
+        print "Generated Sig: %s" % signature
+        print "Request Sig: %s" % auth_headers['oauth_signature']
+
+        return True
+
+    @classmethod
+    def generate_signature(cls, base_sig, cons_sec, user_sec=None):
+        if user_sec:
+            key = "%s&%s" % (cons_sec, user_sec)
+        else:
+            key = "%s&" % cons_sec
+
+        hashed = hmac.new(key, base_sig, sha1)
+        arr = binascii.b2a_base64(hashed.digest())
+        ret = ""
+        for s in arr:
+            ret += s
+        return ret.replace("\n", "")
+
+    @classmethod
+    def url_decode(cls, str):
+        return urllib2.unquote(str)
+
+    @classmethod
+    def url_encode(cls, str):
+        return urllib2.quote(str.encode('utf8'))
 
     @classmethod
     def authorize_xauth(cls):
@@ -34,38 +87,40 @@ class Oauth1(object):
 
     @classmethod
     def authorize_consumer(cls):
-        post = request.form
-        get = request.args
         store = Oauth1StoreRedis()
 
-        if 'realm' in post and post['realm'] != cls.BASE_URL:
+        auth_headers = request.headers['Authorization'].replace('OAuth ', '').replace(', ', ',').split(',')
+        auth_headers = {couple[0]: couple[1][1:][:-1] for couple in [field.split('=') for field in auth_headers]}
+
+        if 'realm' in auth_headers and auth_headers['realm'] != cls.BASE_URL:
             return 'The realm must match this server\'s Base URL'
 
-        if not ('oauth_consumer_key' in post and store.is_valid_consumer_key(post['oauth_consumer_key'])):
+        if not ('oauth_consumer_key' in auth_headers and
+                    store.is_valid_consumer_key(auth_headers['oauth_consumer_key'])):
             return 'Missing or Invalid Consumer Key'
 
-        if not ('oauth_signature_method' in post and post['oauth_signature_method'] == 'HMAC-SHA1'):
+        if not ('oauth_signature_method' in auth_headers and auth_headers['oauth_signature_method'] == 'HMAC-SHA1'):
             return 'Supported OAuth Signature Method is only HMAC-SHA1, must be explicitly defined'
 
-        if not 'oauth_signature' in get:
+        if not 'oauth_signature' in auth_headers:
             return 'OAuth Signature is required'
 
-        if not get['oauth_signature']:
+        if not auth_headers['oauth_signature']:
             return 'OAuth Signature must not be empty'
 
-        if not 'oauth_timestamp' in post:
+        if not 'oauth_timestamp' in auth_headers:
             return 'OAuth Timestamp is required'
 
-        if not 'oauth_nonce' in post:
+        if not 'oauth_nonce' in auth_headers:
             return 'OAuth Nonce is required'
 
-        if store.nonce_is_declared(post['oauth_nonce']):
+        if store.nonce_is_declared(auth_headers['oauth_nonce']):
             return 'OAuth Nonce is already declared'
 
-        if not ('oauth_version' in post and post['oauth_version'] == '1.0'):
+        if not ('oauth_version' in auth_headers and auth_headers['oauth_version'] == '1.0'):
             return 'Supported OAuth version is 1.0'
 
-        if 'oauth_token' in post and post['oauth_token']:
+        if 'oauth_token' in auth_headers and auth_headers['oauth_token']:
             cls.with_user_tokens = True
 
         return True
@@ -98,8 +153,7 @@ class Oauth1StoreRedis(object):
         hash_name = "%s-app_info" % self.redis_ns
 
         app = json.dumps({
-            'id': str(uuid.uuid5(uuid.NAMESPACE_DNS,
-                                 'hlwBpeX4gIOzl8MCNeF3rFpD1752UfXL6lpy7ZZP5HA3wedBCAvmf559dhaENtO')).replace('-', ''),
+            'id': uuid.uuid4().__str__().replace('-', ''),
             'name': app_name,
             'description': app_desc,
             'platform': app_platform,
@@ -111,10 +165,9 @@ class Oauth1StoreRedis(object):
         self.conn.hset(hash_name, tokens['consumer_key'], tokens['consumer_secret'])
 
     def _generate_new_consumer_tokens(self):
-        seed = 'ny7WpbKCCDBmZW2RnZMWMW4FvD8e6unAepvd9oGkK1cyhGYyye1bBbVZQhjX0or'
         return {
-            'consumer_key': str(uuid.uuid5(uuid.NAMESPACE_DNS, seed)).replace('-', ''),
-            'consumer_secret': str(uuid.uuid5(uuid.NAMESPACE_DNS, seed)).replace('-', '')
+            'consumer_key': uuid.uuid4().__str__().replace('-', ''),
+            'consumer_secret': uuid.uuid4().__str__().replace('-', '')
         }
 
     def is_valid_consumer_key(self, cons_key):
@@ -125,6 +178,15 @@ class Oauth1StoreRedis(object):
             return True
         else:
             return False
+
+    def get_consumer_secret(self, consumer_key):
+        hash_name = "%s-consumer_tokens" % self.redis_ns
+        cons_sec = self.conn.hget(hash_name, consumer_key)
+
+        if isinstance(cons_sec, str):
+            return cons_sec
+        else:
+            return None
 
 class Oauth1Errors(object):
     BASE_URL = None
