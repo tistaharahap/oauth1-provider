@@ -12,10 +12,16 @@ and send pull requests.
 With this README, I have no plans in supporting 3 legged authentications. I am only supporting XAuth at the moment.
 Fork and contribute to add support to 3 legged authentications.
 
-OAuth Authorization components are all expected from a HTTP POST body except for OAuth Signatures, this is expected
-from query strings.
+OAuth 1.0 Authorization components are all expected from Authorization header. Example below.
 
-Will refactor later on, it seems that my REST tool is not supporting extra Authentication headers properly.
+```
+Authorization: OAuth realm="http://localhost:5000/",
+        oauth_consumer_key="dpf43f3p2l4k3l03",
+        oauth_signature_method="HMAC-SHA1",
+        oauth_timestamp="137131200",
+        oauth_nonce="wIjqoS",
+        oauth_signature="74KNZJeDHnMBp0EMJ9ZHt%2FXKycU%3D"
+```
 
 ## Using
 
