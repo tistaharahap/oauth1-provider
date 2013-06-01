@@ -1,9 +1,11 @@
 OAuth 1.0a Provider with Redis in Python
 ========================================
 
-I want to build a scalable OAuth 1.0a Provider that is is to subclass specifically in authenticating users against
+I want to build a scalable OAuth 1.0a Provider that is easy to subclass specifically in authenticating users against
 various databases. Focuses in leveraging performance by using Redis as the primary OAuth Provider backend, user
 authentications can be handled differently using any other databases.
+
+Coded against RFC5849 so please excuse any mishaps, everyone is welcomed to fork and send pull requests.
 
 
 Compatibility Against RFC5849 <http://tools.ietf.org/html/rfc5849>
