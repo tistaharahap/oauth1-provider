@@ -11,32 +11,37 @@ class Oauth1(object):
         self.BASE_URL = base_url
 
     @classmethod
-    def authorize_request(cls):
+    def authorize_request(cls, uri):
         auth_headers = request.headers['Authorization'].replace('OAuth ', '').replace(', ', ',').split(',')
         auth_headers = {cls.url_decode(couple[0]): cls.url_decode(couple[1][1:][:-1])
                         for couple in [field.split('=') for field in auth_headers]}
 
+        oauth_sig = auth_headers['oauth_signature']
+        auth_headers.pop('oauth_signature')
+
         post = request.form
         get = request.args
 
-        postget = {k: v for (k, v) in post.iteritems()}
+        postget = {cls.url_encode(k): cls.url_encode(v) for (k, v) in post.iteritems()}
         if get:
-            postget.update({k: v for (k, v) in get.iteritems()})
+            postget.update({cls.url_encode(k): cls.url_encode(v) for (k, v) in get.iteritems()})
 
         postget.update(auth_headers)
         postget = sorted(postget.iteritems(), key=operator.itemgetter(0))
 
         method = request.method.upper()
-        base_signature = "%s&" % method
+        base_signature = "%s&%s%s&" % (method, cls.url_encode(cls.BASE_URL), cls.url_encode(uri))
         for (k, v) in postget:
-            base_signature = "%s%s=%s&" % (base_signature, cls.url_encode(k), cls.url_encode(v))
-        base_signature = base_signature[:-1]
+            base_signature = "%s%s%s%s%s" % (base_signature, cls.url_encode(k), cls.url_encode('='),
+                                             cls.url_encode(v), cls.url_encode('&'))
+        base_signature = base_signature[:-3]
+        print base_signature
 
         store = Oauth1StoreRedis()
         signature = cls.generate_signature(base_sig=base_signature,
                                            cons_sec=store.get_consumer_secret(auth_headers['oauth_consumer_key']))
         print "Generated Sig: %s" % signature
-        print "Request Sig: %s" % auth_headers['oauth_signature']
+        print "Request Sig: %s" % oauth_sig
 
         return True
 
@@ -60,7 +65,7 @@ class Oauth1(object):
 
     @classmethod
     def url_encode(cls, str):
-        return urllib2.quote(str.encode('utf8'))
+        return urllib2.quote(str.encode('utf8')).replace('/', '%2F')
 
     @classmethod
     def authorize_xauth(cls):
