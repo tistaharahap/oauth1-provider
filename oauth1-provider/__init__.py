@@ -19,7 +19,7 @@ def oauth(action=None):
             return Oauth1Errors.forbidden(cons_check)
 
         # TODO: Verify OAuth signature
-        authorized = Oauth1.authorize_request()
+        authorized = Oauth1.authorize_request(uri='oauth/access_token')
         if isinstance(authorized, str):
             return Oauth1Errors.unauthorized(authorized)
 
