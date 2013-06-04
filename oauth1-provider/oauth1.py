@@ -16,6 +16,10 @@ class Oauth1(object):
         auth_headers = {cls.url_decode(couple[0]): cls.url_decode(couple[1][1:][:-1])
                         for couple in [field.split('=') for field in auth_headers]}
 
+        # Check Nonce
+        if cls.is_nonce_used(auth_headers['oauth_nonce']):
+            return 'OAuth Nonce has been declared'
+
         oauth_sig = auth_headers['oauth_signature']
         auth_headers.pop('oauth_signature')
 
@@ -40,10 +44,15 @@ class Oauth1(object):
         store = Oauth1StoreRedis()
         signature = cls.generate_signature(base_sig=base_signature,
                                            cons_sec=store.get_consumer_secret(auth_headers['oauth_consumer_key']))
-        print "Generated Sig: %s" % signature
-        print "Request Sig: %s" % oauth_sig
+
+        if signature != oauth_sig:
+            return 'Invalid OAuth signature'
 
         return True
+
+    @classmethod
+    def is_nonce_used(cls, nonce):
+        return not Oauth1StoreRedis().nonce_is_declared(nonce=nonce)
 
     @classmethod
     def generate_signature(cls, base_sig, cons_sec, user_sec=None):
@@ -151,6 +160,7 @@ class Oauth1StoreRedis(object):
         if res:
             return True
         else:
+            self.conn.hset(hash_name, nonce, 1)
             return False
 
     def create_new_consumer_tokens(self, app_name, app_desc, app_platform, app_url):
