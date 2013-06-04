@@ -39,7 +39,6 @@ class Oauth1(object):
             base_signature = "%s%s%s%s%s" % (base_signature, cls.url_encode(k), cls.url_encode('='),
                                              cls.url_encode(v), cls.url_encode('&'))
         base_signature = base_signature[:-3]
-        print base_signature
 
         store = Oauth1StoreRedis()
         signature = cls.generate_signature(base_sig=base_signature,
@@ -92,9 +91,9 @@ class Oauth1(object):
         if post['x_auth_mode'] != 'client_auth':
             return 'XAuth mode supported is client_auth only'
 
-        return True
+        return cls._verify_xauth_credentials(username=post['x_auth_username'], password=post['x_auth_password'])
 
-    # Subclass this method to provide XAuth
+    # Extend this method to provide XAuth
     @classmethod
     def _verify_xauth_credentials(cls, username, password):
         return True
