@@ -45,7 +45,7 @@ class Oauth1(object):
                                            cons_sec=store.get_consumer_secret(auth_headers['oauth_consumer_key']))
 
         if signature != oauth_sig:
-            return 'Invalid OAuth signature'
+            return 'Invalid OAuth signature | %s' % base_signature
 
         return True
 
