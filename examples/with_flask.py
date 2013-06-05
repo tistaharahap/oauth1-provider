@@ -5,22 +5,28 @@ BASE_URL = "http://localhost:5000/"
 
 app = Flask(__name__)
 
+
+class ExampleProvider(Oauth1):
+    @classmethod
+    def _verify_xauth_credentials(cls, username, password):
+        return username == 'username' and password == 'password'
+
 @app.route('/oauth/', methods=['GET', 'POST'])
 @app.route('/oauth/<action>', methods=['POST'])
 def oauth(action=None):
     if action == 'access_token':
-        Oauth1.BASE_URL = BASE_URL
+        ExampleProvider.BASE_URL = BASE_URL
 
-        cons_check = Oauth1.authorize_consumer()
+        cons_check = ExampleProvider.authorize_consumer()
         if isinstance(cons_check, str):
             return Oauth1Errors.forbidden(cons_check)
 
-        authorized = Oauth1.authorize_request(uri='oauth/access_token')
+        authorized = ExampleProvider.authorize_request(uri='oauth/access_token')
         if isinstance(authorized, str):
             return Oauth1Errors.unauthorized(authorized)
 
         # Check username/password from XAuth
-        x_check = Oauth1.authorize_xauth()
+        x_check = ExampleProvider.authorize_xauth()
         if isinstance(x_check, str):
             return Oauth1Errors.bad_request(x_check)
 
