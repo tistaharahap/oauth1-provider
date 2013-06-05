@@ -1,11 +1,11 @@
 from setuptools import setup
 
 def readme():
-    with open('README') as f:
+    with open('README.md') as f:
         return f.read()
 
 setup(name='oauth1-provider',
-      version='0.1.1',
+      version='0.2.0',
       description='OAuth 1.0 Provider with Redis in Python',
       long_description=readme(),
       keywords='oauth redis xauth',
