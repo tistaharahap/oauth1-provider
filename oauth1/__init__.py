@@ -103,76 +103,111 @@ class Oauth1(object):
     def authorize_consumer(cls):
         store = Oauth1StoreRedis()
 
-        if 'Authorization' in request.headers:
-            auth_headers = request.headers['Authorization'].replace('OAuth ', '').replace(', ', ',').split(',')
-            auth_headers = {couple[0]: couple[1][1:][:-1] for couple in [field.split('=') for field in auth_headers]}
+        if 'Authorization' in request.headers and request.headers['Authorization'][0:5].lower() == 'oauth':
+            cls.auth_method = 'header'
+            auth = request.headers['Authorization'].replace('OAuth ', '').replace(', ', ',').split(',')
+            auth = {couple[0]: couple[1][1:][:-1] for couple in [field.split('=') for field in auth]}
+        elif request.form and 'oauth_consumer_key' in request.form:
+            auth = request.form
+            cls.auth_method = 'post'
+        else:
+            return AuthorizeErrors.missing_auth_data()
 
-            if 'realm' in auth_headers and auth_headers['realm'] != cls.BASE_URL:
-                return 'The realm must match this server\'s Base URL'
+        if cls.auth_method == 'header':
+            if 'realm' in auth and auth['realm'] != cls.BASE_URL:
+                return AuthorizeErrors.invalid_realm()
 
-            if not ('oauth_consumer_key' in auth_headers and
-                        store.is_valid_consumer_key(auth_headers['oauth_consumer_key'])):
-                return 'Missing or Invalid Consumer Key'
-
-            if not ('oauth_signature_method' in auth_headers and auth_headers['oauth_signature_method'] == 'HMAC-SHA1'):
-                return 'Supported OAuth Signature Method is only HMAC-SHA1, must be explicitly defined'
-
-            if not 'oauth_signature' in auth_headers:
+            if not 'oauth_signature' in auth:
                 return 'OAuth Signature is required'
 
-            if not auth_headers['oauth_signature']:
+            if not auth['oauth_signature']:
                 return 'OAuth Signature must not be empty'
-            else:
-                cls.auth_method = 'header'
-
-            if not 'oauth_timestamp' in auth_headers:
-                return 'OAuth Timestamp is required'
-
-            if not 'oauth_nonce' in auth_headers:
-                return 'OAuth Nonce is required'
-
-            if store.nonce_is_declared(auth_headers['oauth_nonce']):
-                return 'OAuth Nonce is already declared'
-
-            if not ('oauth_version' in auth_headers and auth_headers['oauth_version'] == '1.0'):
-                return 'Supported OAuth version is 1.0'
-
-            if 'oauth_token' in auth_headers and auth_headers['oauth_token']:
-                cls.with_user_tokens = True
-        elif 'oauth_consumer_key' in request.form:
-            if not ('oauth_consumer_key' in request.form and
-                        store.is_valid_consumer_key(request.form['oauth_consumer_key'])):
-                return 'Missing or Invalid Consumer Key'
-
-            if not ('oauth_signature_method' in request.form and request.form['oauth_signature_method'] == 'HMAC-SHA1'):
-                return 'Supported OAuth Signature Method is only HMAC-SHA1, must be explicitly defined'
-
+        elif cls.auth_method == 'post':
             if not 'oauth_signature' in request.args:
-                return 'OAuth Signature is required'
+                return AuthorizeErrors.missing_oauth_signature()
 
             if not request.args['oauth_signature']:
-                return 'OAuth Signature must not be empty'
-            else:
-                cls.auth_method = 'post'
+                return AuthorizeErrors.empty_oauth_signature()
 
-            if not 'oauth_timestamp' in request.form:
-                return 'OAuth Timestamp is required'
+        if not 'oauth_consumer_key' in request.form:
+            return AuthorizeErrors.missing_consumer_key()
 
-            if not 'oauth_nonce' in request.form:
-                return 'OAuth Nonce is required'
+        if not store.is_valid_consumer_key(auth['oauth_consumer_key']):
+            return AuthorizeErrors.invalid_consumer_key()
 
-            if store.nonce_is_declared(request.form['oauth_nonce']):
-                return 'OAuth Nonce is already declared'
+        if not ('oauth_signature_method' in auth and auth['oauth_signature_method'] == 'HMAC-SHA1'):
+            return AuthorizeErrors.unsupported_sign_method()
 
-            if not ('oauth_version' in request.form and request.form['oauth_version'] == '1.0'):
-                return 'Supported OAuth version is 1.0'
+        if not 'oauth_timestamp' in auth:
+            return AuthorizeErrors.missing_timestamp()
 
-            if 'oauth_token' in request.form and request.form['oauth_token']:
-                cls.with_user_tokens = True
-        else:
-            return 'No OAuth authorization data is available'
+        if not 'oauth_nonce' in auth:
+            return AuthorizeErrors.missing_nonce()
+
+        if store.nonce_is_declared(auth['oauth_nonce']):
+            return AuthorizeErrors.declared_nonce()
+
+        if not 'oauth_version' in auth:
+            return AuthorizeErrors.missing_oauth_version()
+
+        if not (auth['oauth_version'] == '1.0'):
+            return AuthorizeErrors.invalid_oauth_version()
+
+        if 'oauth_token' in auth and auth['oauth_token']:
+            cls.with_user_tokens = True
 
         return True
+
+
+class AuthorizeErrors(object):
+    @classmethod
+    def invalid_realm(cls):
+        return 'The OAuth Realm must match this machine\'s BASE URL'
+
+    @classmethod
+    def missing_auth_data(cls):
+        return 'No OAuth authorization data is available'
+
+    @classmethod
+    def missing_consumer_key(cls):
+        return 'OAuth Consumer Key is required'
+
+    @classmethod
+    def invalid_consumer_key(cls):
+        return 'Invalid or unrecognized Consumer Key'
+
+    @classmethod
+    def unsupported_sign_method(cls):
+        return 'Supported OAuth Signature Method is only HMAC-SHA1, must be explicitly defined'
+
+    @classmethod
+    def missing_oauth_signature(cls):
+        return 'OAuth Signature is required'
+
+    @classmethod
+    def empty_oauth_signature(cls):
+        return 'OAuth Signature must not be empty'
+
+    @classmethod
+    def missing_timestamp(cls):
+        return 'OAuth Timestamp is required'
+
+    @classmethod
+    def missing_nonce(cls):
+        return 'OAuth Nonce is required'
+
+    @classmethod
+    def declared_nonce(cls):
+        return 'OAuth Nonce is already declared'
+
+    @classmethod
+    def missing_oauth_version(cls):
+        return 'OAuth Version is missing'
+
+    @classmethod
+    def invalid_oauth_version(cls):
+        return 'Only OAuth 1.0 is supported'
+
 
 class Oauth1StoreRedis(object):
     redis_host = 'localhost'
