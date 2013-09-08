@@ -6,10 +6,10 @@ def readme():
 
 setup(name='oauth1',
       version='0.4.0',
-      description='OAuth 1.0 Provider with Redis in Python',
+      description='OAuth 1.0a Provider for Python',
       long_description=readme(),
-      keywords='oauth redis xauth',
-      url='https://github.com/tistaharahap/oauth1-provider-redis-py/',
+      keywords='oauth xauth',
+      url='https://github.com/tistaharahap/oauth1-provider/',
       author='Batista Harahap',
       author_email='batista@bango29.com',
       license='MIT',
@@ -17,5 +17,6 @@ setup(name='oauth1',
       install_requires=[
           'flask',
           'redis',
-          'hiredis'],
+          'hiredis',
+          'SQLAlchemy'],
       zip_safe=False)
