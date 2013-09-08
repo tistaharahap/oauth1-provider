@@ -35,8 +35,9 @@ class Oauth1StoreRedis(Oauth1StoreBase):
         tokens = self._generate_new_consumer_tokens()
         hash_name = "%s-app_info" % self.redis_ns
 
+        app_id = uuid.uuid4().__str__().replace('-', '')
         app = json.dumps({
-            'id': uuid.uuid4().__str__().replace('-', ''),
+            'id': app_id,
             'name': app_name,
             'description': app_desc,
             'platform': app_platform,
@@ -46,6 +47,12 @@ class Oauth1StoreRedis(Oauth1StoreBase):
 
         hash_name = "%s-consumer_tokens" % self.redis_ns
         self.conn.hset(hash_name, tokens['consumer_key'], tokens['consumer_secret'])
+
+        return {
+            'app_id': app_id,
+            'consumer_key': tokens['consumer_key'],
+            'consumer_secret': tokens['consumer_secret']
+        }
 
     def _generate_new_consumer_tokens(self):
         return {

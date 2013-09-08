@@ -53,7 +53,7 @@ class Oauth1StoreSQLAlchemy(Oauth1StoreBase):
         tokens = self._generate_new_consumer_tokens()
 
         # Add consumer tokens
-        cons_tokens = ConsumerTokensModel(id=app_id, key=tokens['cons_key'], sec=tokens['cons_sec'],
+        cons_tokens = ConsumerTokensModel(id=app_id, key=tokens['consumer_key'], sec=tokens['consumer_secret'],
                                           created=Oauth1StoreSQLAlchemy.get_unix_time())
         self.session.add(cons_tokens)
 
@@ -67,8 +67,8 @@ class Oauth1StoreSQLAlchemy(Oauth1StoreBase):
 
     def _generate_new_consumer_tokens(self):
         return {
-            'cons_key': Oauth1StoreSQLAlchemy.random_string(size=40),
-            'cons_sec': Oauth1StoreSQLAlchemy.random_string(size=40)
+            'consumer_key': Oauth1StoreSQLAlchemy.random_string(size=40),
+            'consumer_secret': Oauth1StoreSQLAlchemy.random_string(size=40)
         }
 
     def is_valid_consumer_key(self, cons_key):
