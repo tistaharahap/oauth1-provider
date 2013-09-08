@@ -5,7 +5,7 @@ def readme():
         return f.read()
 
 setup(name='oauth1',
-      version='0.4.0',
+      version='0.4.1',
       description='OAuth 1.0a Provider for Python',
       long_description=readme(),
       keywords='oauth xauth',
