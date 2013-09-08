@@ -1,5 +1,6 @@
 from flask import Flask, jsonify
-from oauth1 import Oauth1, Oauth1Errors
+from oauth1.authorize import Oauth1
+from oauth1.errors.oauth import Oauth1Errors
 
 BASE_URL = "http://localhost:5000/"
 
