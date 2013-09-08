@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 from oauth1.authorize import Oauth1
 from oauth1.errors.oauth import Oauth1Errors
 from oauth1.store.sql import Oauth1StoreSQLAlchemy
+from oauth1.store.nosql import Oauth1StoreRedis
 
 BASE_URL = "http://localhost:5000/"
 
@@ -9,16 +10,36 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///:memory:"    # Change this to a valid URI
 
 
-class ExampleProvider(Oauth1):
+class SQLProvider(Oauth1):
 
     def __init__(self):
         store = Oauth1StoreSQLAlchemy(app=app)
-        super(ExampleProvider, self).__init__(base_url=BASE_URL, store=store)
+        super(SQLProvider, self).__init__(base_url=BASE_URL, store=store)
 
     def _verify_xauth_credentials(self, username, password):
         return username == 'username' and password == 'password'
 
-oauth = ExampleProvider()
+app.config['REDIS_HOST'] = '127.0.0.1'
+app.config['REDIS_PORT'] = 6379
+app.config['REDIS_DB'] = 0
+app.config['REDIS_NS'] = 'oauth1-provider-nosql'
+
+
+class RedisProvider(Oauth1):
+
+    def __init__(self):
+        store = Oauth1StoreRedis(host=app.config['REDIS_HOST'], port=app.config['REDIS_PORT'],
+                                 db=app.config['REDIS_DB'], namespace=app.config['REDIS_NS'])
+        super(RedisProvider, self).__init__(base_url=BASE_URL, store=store)
+
+    def _verify_xauth_credentials(self, username, password):
+        return username == 'username' and password == 'password'
+
+# For SQL Store
+oauth = SQLProvider()
+
+# For Redis Store
+#oauth = RedisProvider()
 
 @app.route('/oauth/', methods=['GET', 'POST'])
 @app.route('/oauth/<action>', methods=['POST'])
