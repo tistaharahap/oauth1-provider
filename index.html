@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Oauth1-provider by tistaharahap</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/respond.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <!--[if lt IE 8]>
+    <link rel="stylesheet" href="stylesheets/ie.css">
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+      <div id="header">
+        <nav>
+          <li class="fork"><a href="https://github.com/tistaharahap/oauth1-provider">View On GitHub</a></li>
+          <li class="downloads"><a href="https://github.com/tistaharahap/oauth1-provider/zipball/master">ZIP</a></li>
+          <li class="downloads"><a href="https://github.com/tistaharahap/oauth1-provider/tarball/master">TAR</a></li>
+          <li class="title">DOWNLOADS</li>
+        </nav>
+      </div><!-- end header -->
+
+    <div class="wrapper">
+
+      <section>
+        <div id="title">
+          <h1>Oauth1-provider</h1>
+          <p>An OAuth 1.0a provider for Python</p>
+          <hr>
+          <span class="credits left">Project maintained by <a href="https://github.com/tistaharahap">tistaharahap</a></span>
+          <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></span>
+        </div>
+
+        <h1>
+<a name="oauth-10a-provider-for-python" class="anchor" href="#oauth-10a-provider-for-python"><span class="octicon octicon-link"></span></a>OAuth 1.0a Provider for Python</h1>
+
+<p>I want to build a scalable OAuth 1.0a Provider that is easy to subclass specifically in authenticating users against
+various databases. Focuses in leveraging performance by using Redis as the primary OAuth Provider backend, user
+authentications can be handled differently using any other databases.</p>
+
+<p>After much thoughts, I am developing more stores other than Redis. To keep things simple, there are 2 types of stores:</p>
+
+<ul>
+<li>SQL Based (SQLAlchemy)</li>
+<li>NoSQL Based (Currently only Redis)</li>
+</ul><p>There is an abstract Base class for stores called <code>Oauth1StoreBase</code>. Extend and implements the required
+methods to create your own stores.</p>
+
+<p>Coded against <a href="http://tools.ietf.org/html/rfc5849">RFC5849</a> so please excuse any mishaps, everyone is welcomed to fork
+and send pull requests.</p>
+
+<h1>
+<a name="as-of-this-readme-i-am-restructuring-the-whole-package-earlier-codes-will-break-revert-to-030-for-safety" class="anchor" href="#as-of-this-readme-i-am-restructuring-the-whole-package-earlier-codes-will-break-revert-to-030-for-safety"><span class="octicon octicon-link"></span></a>As of this README, I am restructuring the whole package. Earlier codes will break. Revert to 0.3.0 for safety.</h1>
+
+<h2>
+<a name="compatibility-against-rfc5849" class="anchor" href="#compatibility-against-rfc5849"><span class="octicon octicon-link"></span></a>Compatibility Against <a href="http://tools.ietf.org/html/rfc5849">RFC5849</a>
+</h2>
+
+<p>With this README, I have no plans in supporting 3 legged authentications. I am only supporting XAuth at the moment.
+Fork and contribute to add support to 3 legged authentications.</p>
+
+<p>OAuth 1.0a Authorization components are all expected from Authorization header. Example below.</p>
+
+<pre><code>Authorization: OAuth realm="http://localhost:5000/",
+        oauth_consumer_key="dpf43f3p2l4k3l03",
+        oauth_signature_method="HMAC-SHA1",
+        oauth_timestamp="137131200",
+        oauth_nonce="wIjqoS",
+        oauth_signature="74KNZJeDHnMBp0EMJ9ZHt%2FXKycU%3D"
+</code></pre>
+
+<h2>
+<a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage</h2>
+
+<p>The main package depends on these Python modules:</p>
+
+<ul>
+<li>flask</li>
+<li>redis</li>
+<li>SQLAlchemy</li>
+</ul><p>The test.py file depends on these Python modules:</p>
+
+<ul>
+<li>oauthnesia</li>
+</ul><h3>
+<a name="real-usage-and-extending-the-provider" class="anchor" href="#real-usage-and-extending-the-provider"><span class="octicon octicon-link"></span></a>Real Usage and Extending The Provider</h3>
+
+<div class="highlight"><pre><span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Flask</span><span class="p">,</span> <span class="n">jsonify</span>
+<span class="kn">from</span> <span class="nn">oauth1.authorize</span> <span class="kn">import</span> <span class="n">Oauth1</span>
+<span class="kn">from</span> <span class="nn">oauth1.errors.oauth</span> <span class="kn">import</span> <span class="n">Oauth1Errors</span>
+<span class="kn">from</span> <span class="nn">oauth1.store.sql</span> <span class="kn">import</span> <span class="n">Oauth1StoreSQLAlchemy</span>
+<span class="kn">from</span> <span class="nn">oauth1.store.nosql</span> <span class="kn">import</span> <span class="n">Oauth1StoreRedis</span>
+
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s">"http://localhost:5000/"</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+<span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">'SQLALCHEMY_DATABASE_URI'</span><span class="p">]</span> <span class="o">=</span> <span class="s">"sqlite:///:memory:"</span>    <span class="c"># Change this to a valid URI</span>
+
+
+<span class="k">class</span> <span class="nc">SQLProvider</span><span class="p">(</span><span class="n">Oauth1</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">store</span> <span class="o">=</span> <span class="n">Oauth1StoreSQLAlchemy</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SQLProvider</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="n">BASE_URL</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_verify_xauth_credentials</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">username</span> <span class="o">==</span> <span class="s">'username'</span> <span class="ow">and</span> <span class="n">password</span> <span class="o">==</span> <span class="s">'password'</span>
+
+<span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">'REDIS_HOST'</span><span class="p">]</span> <span class="o">=</span> <span class="s">'127.0.0.1'</span>
+<span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">'REDIS_PORT'</span><span class="p">]</span> <span class="o">=</span> <span class="mi">6379</span>
+<span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">'REDIS_DB'</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">'REDIS_NS'</span><span class="p">]</span> <span class="o">=</span> <span class="s">'oauth1-provider-nosql'</span>
+
+
+<span class="k">class</span> <span class="nc">RedisProvider</span><span class="p">(</span><span class="n">Oauth1</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">store</span> <span class="o">=</span> <span class="n">Oauth1StoreRedis</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">'REDIS_HOST'</span><span class="p">],</span> <span class="n">port</span><span class="o">=</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">'REDIS_PORT'</span><span class="p">],</span>
+                                 <span class="n">db</span><span class="o">=</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">'REDIS_DB'</span><span class="p">],</span> <span class="n">namespace</span><span class="o">=</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">'REDIS_NS'</span><span class="p">])</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">RedisProvider</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="n">BASE_URL</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_verify_xauth_credentials</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">username</span> <span class="o">==</span> <span class="s">'username'</span> <span class="ow">and</span> <span class="n">password</span> <span class="o">==</span> <span class="s">'password'</span>
+
+<span class="c"># For SQL Store</span>
+<span class="n">oauth</span> <span class="o">=</span> <span class="n">SQLProvider</span><span class="p">()</span>
+
+<span class="c"># For Redis Store</span>
+<span class="c">#oauth = RedisProvider()</span>
+
+<span class="nd">@app.route</span><span class="p">(</span><span class="s">'/oauth/'</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s">'GET'</span><span class="p">,</span> <span class="s">'POST'</span><span class="p">])</span>
+<span class="nd">@app.route</span><span class="p">(</span><span class="s">'/oauth/&lt;action&gt;'</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s">'POST'</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">oauth</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s">'access_token'</span><span class="p">:</span>
+        <span class="n">cons_check</span> <span class="o">=</span> <span class="n">oauth</span><span class="o">.</span><span class="n">authorize_consumer</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cons_check</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Oauth1Errors</span><span class="o">.</span><span class="n">forbidden</span><span class="p">(</span><span class="n">cons_check</span><span class="p">)</span>
+
+        <span class="n">authorized</span> <span class="o">=</span> <span class="n">oauth</span><span class="o">.</span><span class="n">authorize_request</span><span class="p">(</span><span class="n">uri</span><span class="o">=</span><span class="s">'oauth/access_token'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">authorized</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Oauth1Errors</span><span class="o">.</span><span class="n">unauthorized</span><span class="p">(</span><span class="n">authorized</span><span class="p">)</span>
+
+        <span class="c"># Check username/password from XAuth</span>
+        <span class="n">x_check</span> <span class="o">=</span> <span class="n">oauth</span><span class="o">.</span><span class="n">authorize_xauth</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x_check</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Oauth1Errors</span><span class="o">.</span><span class="n">bad_request</span><span class="p">(</span><span class="n">x_check</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">jsonify</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s">'ok'</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Oauth1Errors</span><span class="o">.</span><span class="n">not_found</span><span class="p">(</span><span class="s">'There is no valid resource here'</span><span class="p">)</span>
+
+<span class="nd">@app.route</span><span class="p">(</span><span class="s">'/user/&lt;user_uri&gt;'</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s">'GET'</span><span class="p">,</span> <span class="s">'POST'</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">user</span><span class="p">(</span><span class="n">user_uri</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">user_uri</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Oauth1Errors</span><span class="o">.</span><span class="n">bad_request</span><span class="p">(</span><span class="s">'You must supply a User URI'</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">cons_check</span> <span class="o">=</span> <span class="n">oauth</span><span class="o">.</span><span class="n">authorize_consumer</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cons_check</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Oauth1Errors</span><span class="o">.</span><span class="n">forbidden</span><span class="p">(</span><span class="n">cons_check</span><span class="p">)</span>
+
+        <span class="n">authorized</span> <span class="o">=</span> <span class="n">oauth</span><span class="o">.</span><span class="n">authorize_request</span><span class="p">(</span><span class="n">uri</span><span class="o">=</span><span class="s">'oauth/access_token'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">authorized</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Oauth1Errors</span><span class="o">.</span><span class="n">unauthorized</span><span class="p">(</span><span class="n">authorized</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">jsonify</span><span class="p">(</span><span class="n">uri</span><span class="o">=</span><span class="n">user_uri</span><span class="p">)</span>
+
+<span class="nd">@app.errorhandler</span><span class="p">(</span><span class="mi">404</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">not_found</span><span class="p">(</span><span class="n">error</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">Oauth1Errors</span><span class="o">.</span><span class="n">not_found</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">debug</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+
+<h2>
+<a name="feedbacks" class="anchor" href="#feedbacks"><span class="octicon octicon-link"></span></a>Feedbacks</h2>
+
+<p>Again I am still new to Python, please give some feedbacks on best practices. Pull Requests are very welcomed.</p>
+      </section>
+
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
