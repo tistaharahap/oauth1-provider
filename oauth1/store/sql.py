@@ -1,5 +1,5 @@
 from oauth1.store.base import Oauth1StoreBase
-from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy import create_engine, Column, Integer, String, select
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 import time
@@ -8,6 +8,13 @@ import random
 
 
 Base = declarative_base()
+Tables = {
+    'oauth_apps': 'oauth_apps',
+    'oauth_nonces': 'oauth_nonces',
+    'oauth_consumer_tokens': 'oauth_consumer_tokens',
+    'oauth_user_tokens': 'oauth_user_tokens'
+}
+
 
 class Oauth1StoreSQLAlchemy(Oauth1StoreBase):
     db = None
@@ -39,37 +46,50 @@ class Oauth1StoreSQLAlchemy(Oauth1StoreBase):
         consumer = OauthAppModel(name=app_name, desc=app_desc, platform=app_platform,
                                  url=app_url, created=Oauth1StoreSQLAlchemy.get_unix_time())
         self.session.add(consumer)
+        self.session.flush()
+
+        app_id = consumer.app_id
 
         tokens = self._generate_new_consumer_tokens()
 
         # Add consumer tokens
-        consumer_tokens = ConsumerTokensModel()
+        cons_tokens = ConsumerTokensModel(id=app_id, key=tokens['cons_key'], sec=tokens['cons_sec'],
+                                          created=Oauth1StoreSQLAlchemy.get_unix_time())
+        self.session.add(cons_tokens)
 
         self.session.commit()
 
+        return {
+            'app_id': app_id,
+            'consumer_key': tokens['cons_key'],
+            'consumer_secret': tokens['cons_sec']
+        }
+
     def _generate_new_consumer_tokens(self):
         return {
-            'cons_key': Oauth1StoreSQLAlchemy.random_string(size=20),
-            'cons_sec': Oauth1StoreSQLAlchemy.random_string(size=20)
+            'cons_key': Oauth1StoreSQLAlchemy.random_string(size=40),
+            'cons_sec': Oauth1StoreSQLAlchemy.random_string(size=40)
         }
 
     def is_valid_consumer_key(self, cons_key):
-        pass
+        q = ConsumerTokensModel.query.filter(ConsumerTokensModel.cons_key == cons_key).first()
+        return q is not None and q.cons_key == cons_key
 
     def get_consumer_secret(self, consumer_key):
-        pass
+        q = ConsumerTokensModel.query.filter(ConsumerTokensModel.cons_key == consumer_key).first()
+        return q.cons_sec if q is not None else None
 
     @classmethod
     def get_unix_time(cls):
         return int(time.time())
 
     @classmethod
-    def random_string(cls, size=6, chars=string.ascii_uppercase + string.digits):
+    def random_string(cls, size=6, chars=string.ascii_uppercase + string.digits + string.ascii_lowercase):
         return ''.join(random.choice(chars) for x in range(size))
 
 
 class NonceModel(Base):
-    __tablename__ = 'oauth_nonces'
+    __tablename__ = Tables['oauth_nonces']
 
     nonce_key = Column(String(50), primary_key=True)
     nonce_app_id = Column(Integer)
@@ -83,9 +103,9 @@ class NonceModel(Base):
 
 
 class OauthAppModel(Base):
-    __tablename__ = 'oauth_apps'
+    __tablename__ = Tables['oauth_apps']
 
-    app_id = Column(Integer, primary_key=True)
+    app_id = Column(Integer, primary_key=True, autoincrement=True)
     app_name = Column(String(50), unique=True)
     app_desc = Column(String(255))
     app_platform = Column(String(50))
@@ -104,7 +124,7 @@ class OauthAppModel(Base):
 
 
 class ConsumerTokensModel(Base):
-    __tablename__ = 'oauth_consumer_tokens'
+    __tablename__ = Tables['oauth_consumer_tokens']
 
     app_id = Column(Integer, primary_key=True)
     cons_key = Column(String(50), unique=True)
@@ -122,7 +142,7 @@ class ConsumerTokensModel(Base):
 
 
 class UserTokensModel(Base):
-    __tablename__ = 'oauth_user_tokens'
+    __tablename__ = Tables['oauth_user_tokens']
 
     app_id = Column(Integer)
     user_id = Column(String(20))
