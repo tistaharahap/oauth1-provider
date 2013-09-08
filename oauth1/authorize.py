@@ -1,5 +1,5 @@
-from oauth1.store.nosql import Oauth1StoreRedis
 from oauth1.errors.auth import AuthorizeErrors
+from oauth1.store.base import Oauth1StoreBase
 from flask import request
 from hashlib import sha1
 import operator
@@ -12,18 +12,22 @@ class Oauth1(object):
     BASE_URL = None
     with_user_tokens = False
     auth_method = None
+    store = None
 
-    def __init__(self, base_url):
+    def __init__(self, base_url, store):
         self.BASE_URL = base_url
 
-    @classmethod
-    def authorize_request(cls, uri):
+        if not isinstance(store, Oauth1StoreBase):
+            raise TypeError('The OAuth Store must be a subclass of Oauth1StoreBase')
+        self.store = store
+
+    def authorize_request(self, uri):
         auth_headers = request.headers['Authorization'].replace('OAuth ', '').replace(', ', ',').split(',')
-        auth_headers = {cls.url_decode(couple[0]): cls.url_decode(couple[1][1:][:-1])
+        auth_headers = {self.url_decode(couple[0]): self.url_decode(couple[1][1:][:-1])
                         for couple in [field.split('=') for field in auth_headers]}
 
         # Check Nonce
-        if cls.is_nonce_used(auth_headers['oauth_nonce']):
+        if self.is_nonce_used(auth_headers['oauth_nonce']):
             return 'OAuth Nonce has been declared'
 
         oauth_sig = auth_headers['oauth_signature']
@@ -32,35 +36,32 @@ class Oauth1(object):
         post = request.form
         get = request.args
 
-        postget = {cls.url_encode(k): cls.url_encode(v) for (k, v) in post.iteritems()}
+        postget = {self.url_encode(k): self.url_encode(v) for (k, v) in post.iteritems()}
         if get:
-            postget.update({cls.url_encode(k): cls.url_encode(v) for (k, v) in get.iteritems()})
+            postget.update({self.url_encode(k): self.url_encode(v) for (k, v) in get.iteritems()})
 
         postget.update(auth_headers)
         postget = sorted(postget.iteritems(), key=operator.itemgetter(0))
 
         method = request.method.upper()
-        base_signature = "%s&%s%s&" % (method, cls.url_encode(cls.BASE_URL), cls.url_encode(uri))
+        base_signature = "%s&%s%s&" % (method, self.url_encode(self.BASE_URL), self.url_encode(uri))
         for (k, v) in postget:
-            base_signature = "%s%s%s%s%s" % (base_signature, cls.url_encode(k), cls.url_encode('='),
-                                             cls.url_encode(v), cls.url_encode('&'))
+            base_signature = "%s%s%s%s%s" % (base_signature, self.url_encode(k), self.url_encode('='),
+                                             self.url_encode(v), self.url_encode('&'))
         base_signature = base_signature[:-3]
 
-        store = Oauth1StoreRedis()
-        signature = cls.generate_signature(base_sig=base_signature,
-                                           cons_sec=store.get_consumer_secret(auth_headers['oauth_consumer_key']))
+        signature = self.generate_signature(base_sig=base_signature,
+                                            cons_sec=self.store.get_consumer_secret(auth_headers['oauth_consumer_key']))
 
         if signature != oauth_sig:
             return 'Invalid OAuth signature | %s' % base_signature
 
         return True
 
-    @classmethod
-    def is_nonce_used(cls, nonce):
-        return not Oauth1StoreRedis().nonce_is_declared(nonce=nonce)
+    def is_nonce_used(self, nonce):
+        return not self.store.nonce_is_declared(nonce=nonce)
 
-    @classmethod
-    def generate_signature(cls, base_sig, cons_sec, user_sec=None):
+    def generate_signature(self, base_sig, cons_sec, user_sec=None):
         if user_sec:
             key = "%s&%s" % (cons_sec, user_sec)
         else:
@@ -73,16 +74,13 @@ class Oauth1(object):
             ret += s
         return ret.replace("\n", "")
 
-    @classmethod
-    def url_decode(cls, str):
+    def url_decode(self, str):
         return urllib2.unquote(str)
 
-    @classmethod
-    def url_encode(cls, str):
+    def url_encode(self, str):
         return urllib2.quote(str.encode('utf8')).replace('/', '%2F')
 
-    @classmethod
-    def authorize_xauth(cls):
+    def authorize_xauth(self):
         post = request.form
 
         if not 'x_auth_username' in post:
@@ -97,29 +95,25 @@ class Oauth1(object):
         if post['x_auth_mode'] != 'client_auth':
             return 'XAuth mode supported is client_auth only'
 
-        return cls._verify_xauth_credentials(username=post['x_auth_username'], password=post['x_auth_password'])
+        return self._verify_xauth_credentials(username=post['x_auth_username'], password=post['x_auth_password'])
 
     # Extend this method to provide XAuth
-    @classmethod
-    def _verify_xauth_credentials(cls, username, password):
+    def _verify_xauth_credentials(self, username, password):
         return True
 
-    @classmethod
-    def authorize_consumer(cls):
-        store = Oauth1StoreRedis()
-
+    def authorize_consumer(self):
         if 'Authorization' in request.headers and request.headers['Authorization'][0:5].lower() == 'oauth':
-            cls.auth_method = 'header'
+            self.auth_method = 'header'
             auth = request.headers['Authorization'].replace('OAuth ', '').replace(', ', ',').split(',')
             auth = {couple[0]: couple[1][1:][:-1] for couple in [field.split('=') for field in auth]}
         elif request.form and 'oauth_consumer_key' in request.form:
             auth = request.form
-            cls.auth_method = 'post'
+            self.auth_method = 'post'
         else:
             return AuthorizeErrors.missing_auth_data()
 
-        if cls.auth_method == 'header':
-            if 'realm' in auth and auth['realm'] != cls.BASE_URL:
+        if self.auth_method == 'header':
+            if 'realm' in auth and auth['realm'] != self.BASE_URL:
                 return AuthorizeErrors.invalid_realm()
 
             if not 'oauth_signature' in auth:
@@ -127,7 +121,7 @@ class Oauth1(object):
 
             if not auth['oauth_signature']:
                 return 'OAuth Signature must not be empty'
-        elif cls.auth_method == 'post':
+        elif self.auth_method == 'post':
             if not 'oauth_signature' in request.args:
                 return AuthorizeErrors.missing_oauth_signature()
 
@@ -137,7 +131,7 @@ class Oauth1(object):
         if not 'oauth_consumer_key' in request.form:
             return AuthorizeErrors.missing_consumer_key()
 
-        if not store.is_valid_consumer_key(auth['oauth_consumer_key']):
+        if not self.store.is_valid_consumer_key(auth['oauth_consumer_key']):
             return AuthorizeErrors.invalid_consumer_key()
 
         if not ('oauth_signature_method' in auth and auth['oauth_signature_method'] == 'HMAC-SHA1'):
@@ -149,7 +143,7 @@ class Oauth1(object):
         if not 'oauth_nonce' in auth:
             return AuthorizeErrors.missing_nonce()
 
-        if store.nonce_is_declared(auth['oauth_nonce']):
+        if self.store.nonce_is_declared(auth['oauth_nonce']):
             return AuthorizeErrors.declared_nonce()
 
         if not 'oauth_version' in auth:
@@ -159,6 +153,6 @@ class Oauth1(object):
             return AuthorizeErrors.invalid_oauth_version()
 
         if 'oauth_token' in auth and auth['oauth_token']:
-            cls.with_user_tokens = True
+            self.with_user_tokens = True
 
         return True
