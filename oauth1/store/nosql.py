@@ -1,22 +1,26 @@
+from oauth1.store.base import Oauth1StoreBase
 import redis
 import json
 import uuid
 
 
-class Oauth1StoreRedis(object):
-    redis_host = 'localhost'
-    redis_port = 6379
-    redis_db = 0
-    redis_ns = ""
+class Oauth1StoreRedis(Oauth1StoreBase):
+    redis_host = None
+    redis_port = None
+    redis_db = None
+    redis_ns = None
 
     conn = None
 
-    def __init__(self, namespace="oauth1-redis"):
+    def __init__(self, host='127.0.0.1', port=6379, db=0, namespace="oauth1-redis"):
+        self.redis_host = host
+        self.redis_port = port
+        self.redis_db = db
+        self.redis_ns = namespace
+
         self.conn = redis.StrictRedis(host=self.redis_host, port=self.redis_port, db=self.redis_db)
         if not self.conn:
             raise Exception('Redis is not properly setup. Check redis configs?')
-
-        self.redis_ns = namespace
 
     def nonce_is_declared(self, nonce):
         hash_name = "%s-nonces" % self.redis_ns

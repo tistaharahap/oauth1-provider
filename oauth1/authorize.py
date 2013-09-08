@@ -1,4 +1,5 @@
 from oauth1.store.nosql import Oauth1StoreRedis
+from oauth1.errors.auth import AuthorizeErrors
 from flask import request
 from hashlib import sha1
 import operator
