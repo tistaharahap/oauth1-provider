@@ -5,7 +5,7 @@ def readme():
         return f.read()
 
 setup(name='oauth1',
-      version='0.3.0',
+      version='0.4.0',
       description='OAuth 1.0 Provider with Redis in Python',
       long_description=readme(),
       keywords='oauth redis xauth',
