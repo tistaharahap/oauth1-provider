@@ -6,7 +6,7 @@ from oauth1.store.sql import Oauth1StoreSQLAlchemy
 BASE_URL = "http://localhost:5000/"
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///:memory:"
+app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///:memory:"    # Change this to a valid URI
 
 
 class ExampleProvider(Oauth1):
