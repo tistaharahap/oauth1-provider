@@ -21,17 +21,10 @@ class Oauth1(object):
             raise TypeError('The OAuth Store must be a subclass of Oauth1StoreBase')
         self.store = store
 
-    def create_new_consumer_tokens(self, app_name, app_desc, app_platform, app_url):
-        return self.store.create_new_consumer_tokens(app_name, app_desc, app_platform, app_url)
-
     def authorize_request(self, uri):
         auth_headers = request.headers['Authorization'].replace('OAuth ', '').replace(', ', ',').split(',')
         auth_headers = {self.url_decode(couple[0]): self.url_decode(couple[1][1:][:-1])
                         for couple in [field.split('=') for field in auth_headers]}
-
-        # Check Nonce
-        if self.is_nonce_used(auth_headers['oauth_nonce']):
-            return 'OAuth Nonce has been declared'
 
         oauth_sig = auth_headers['oauth_signature']
         auth_headers.pop('oauth_signature')
@@ -53,16 +46,22 @@ class Oauth1(object):
                                              self.url_encode(v), self.url_encode('&'))
         base_signature = base_signature[:-3]
 
+        cons_sec = self.store.get_consumer_secret(auth_headers['oauth_consumer_key'])
         signature = self.generate_signature(base_sig=base_signature,
-                                            cons_sec=self.store.get_consumer_secret(auth_headers['oauth_consumer_key']))
+                                            cons_sec=str(cons_sec))
 
         if signature != oauth_sig:
             return 'Invalid OAuth signature | %s' % base_signature
 
         return True
 
-    def is_nonce_used(self, nonce):
-        return not self.store.nonce_is_declared(nonce=nonce)
+    def is_nonce_used(self, nonce, app_id):
+        used = True if self.store.nonce_is_declared(nonce=nonce) else False
+
+        if not used:
+            self.store.register_nonce(nonce=nonce, app_id=app_id)
+
+        return used
 
     def generate_signature(self, base_sig, cons_sec, user_sec=None):
         if user_sec:
@@ -137,6 +136,10 @@ class Oauth1(object):
         if not self.store.is_valid_consumer_key(auth['oauth_consumer_key']):
             return AuthorizeErrors.invalid_consumer_key()
 
+        app_id = self.store.get_app_id_from_cons_key(cons_key=auth['oauth_consumer_key'])
+        if app_id is None:
+            return AuthorizeErrors.invalid_consumer_key()
+
         if not ('oauth_signature_method' in auth and auth['oauth_signature_method'] == 'HMAC-SHA1'):
             return AuthorizeErrors.unsupported_sign_method()
 
@@ -148,6 +151,8 @@ class Oauth1(object):
 
         if self.store.nonce_is_declared(auth['oauth_nonce']):
             return AuthorizeErrors.declared_nonce()
+        else:
+            self.store.register_nonce(nonce=auth['oauth_nonce'], app_id=app_id)
 
         if not 'oauth_version' in auth:
             return AuthorizeErrors.missing_oauth_version()

@@ -31,8 +31,7 @@ class Oauth1StoreRedis(Oauth1StoreBase):
             self.conn.hset(hash_name, nonce, 1)
             return False
 
-    def create_new_consumer_tokens(self, app_name, app_desc, app_platform, app_url):
-        tokens = self._generate_new_consumer_tokens()
+    def create_new_consumer_app(self, app_name, app_desc, app_platform, app_url):
         hash_name = "%s-app_info" % self.redis_ns
 
         app_id = uuid.uuid4().__str__().replace('-', '')
@@ -43,7 +42,14 @@ class Oauth1StoreRedis(Oauth1StoreBase):
             'platform': app_platform,
             'app_url': app_url
         })
-        self.conn.hset(hash_name, tokens['consumer_key'], app)
+        self.conn.hset(hash_name, app_id, app)
+
+        return {
+            'app_id': app_id
+        }
+
+    def create_new_consumer_tokens(self, app_id):
+        tokens = self._generate_new_consumer_tokens()
 
         hash_name = "%s-consumer_tokens" % self.redis_ns
         self.conn.hset(hash_name, tokens['consumer_key'], tokens['consumer_secret'])

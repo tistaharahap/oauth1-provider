@@ -12,7 +12,19 @@ class Oauth1StoreBase(object):
         raise NotImplementedError("Method nonce_is_declared must be implemented")
 
     @abc.abstractmethod
-    def create_new_consumer_tokens(self, app_name, app_desc, app_platform, app_url):
+    def register_nonce(self, nonce, app_id):
+        raise NotImplementedError("Method register_nonce must be implemented")
+
+    @abc.abstractmethod
+    def get_app_id_from_cons_key(self, cons_key):
+        raise NotImplementedError("Method get_app_id_from_cons_key must be implemented")
+
+    @abc.abstractmethod
+    def create_new_consumer_app(self, app_name, app_desc, app_platform, app_url):
+        raise NotImplementedError("Method create_new_consumer_app must be implemented")
+
+    @abc.abstractmethod
+    def create_new_consumer_tokens(self, app_id):
         raise NotImplementedError("Method create_new_consumer_tokens must be implemented")
 
     @abc.abstractmethod

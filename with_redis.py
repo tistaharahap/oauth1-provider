@@ -32,8 +32,12 @@ class RedisProvider(Oauth1):
 def after_run():
     global app
     app.auth = RedisProvider()
-    app.auth.create_new_consumer_tokens(app_name='Test App %d' % Oauth1StoreBase.get_unix_time(),
-                                        app_desc='Just Testing', app_platform='CLI', app_url=BASE_URL)
+    oauth_app = app.auth.store.create_new_consumer_app(app_name='Test App %d' % Oauth1StoreBase.get_unix_time(),
+                                                       app_desc='Just Testing', app_platform='CLI', app_url=BASE_URL)
+    print "OAuth App: ", oauth_app
+
+    tokens = app.auth.store.create_new_consumer_tokens(app_id=oauth_app['app_id'])
+    print "OAuth Tokens: ", tokens
 
 
 @app.route('/oauth/', methods=['GET', 'POST'])

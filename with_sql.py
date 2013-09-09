@@ -24,8 +24,12 @@ class SQLProvider(Oauth1):
 def after_run():
     global app
     app.auth = SQLProvider()
-    app.auth.create_new_consumer_tokens(app_name='Test App %d' % Oauth1StoreSQLAlchemy.get_unix_time(),
-                                        app_desc='Just Testing', app_platform='CLI', app_url=BASE_URL)
+    oauth_app = app.auth.store.create_new_consumer_app(app_name='Test App %d' % Oauth1StoreSQLAlchemy.get_unix_time(),
+                                                       app_desc='Just Testing', app_platform='CLI', app_url=BASE_URL)
+    print "OAuth App:", oauth_app
+
+    tokens = app.auth.store.create_new_consumer_tokens(app_id=oauth_app['app_id'])
+    print "OAuth Tokens:", tokens
 
 @app.teardown_appcontext
 def tear_app(exception=None):
@@ -34,7 +38,7 @@ def tear_app(exception=None):
 
 
 @app.route('/oauth/', methods=['GET', 'POST'])
-@app.route('/oauth/<action>/', methods=['POST'])
+@app.route('/oauth/<action>', methods=['POST'])
 def oauth(action=None):
     if app.auth is None:
         return Oauth1Errors.server_error(msg='The auth object is not initialized properly')
@@ -58,7 +62,7 @@ def oauth(action=None):
         return Oauth1Errors.not_found('There is no valid resource here')
 
 
-@app.route('/user/<user_uri>/', methods=['GET', 'POST'])
+@app.route('/user/<user_uri>', methods=['GET', 'POST'])
 def user(user_uri=None):
     if not user_uri:
         return Oauth1Errors.bad_request('You must supply a User URI')
