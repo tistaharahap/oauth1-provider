@@ -33,7 +33,7 @@ def tear_app(exception=None):
 
 
 @app.route('/oauth/', methods=['GET', 'POST'])
-@app.route('/oauth/<action>', methods=['POST'])
+@app.route('/oauth/<action>/', methods=['POST'])
 def oauth(action=None):
     if app.auth is None:
         return Oauth1Errors.server_error(msg='The auth object is not initialized properly')
@@ -57,7 +57,7 @@ def oauth(action=None):
         return Oauth1Errors.not_found('There is no valid resource here')
 
 
-@app.route('/user/<user_uri>', methods=['GET', 'POST'])
+@app.route('/user/<user_uri>/', methods=['GET', 'POST'])
 def user(user_uri=None):
     if not user_uri:
         return Oauth1Errors.bad_request('You must supply a User URI')
