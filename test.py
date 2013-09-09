@@ -10,6 +10,6 @@ requests_log.setLevel(logging.DEBUG)
 requests_log.propagate = True
 
 o = oauthnesia(base_url='http://localhost:5000/',
-               cons_key='nZ22DRYacPsmZUiiGNrozxQy99SEG7yejs3AVl4u',
-               cons_sec='z869iaTCtbRvFIBr2ddahTnfPZJQe4VjkTwamXFx')
+               cons_key='OPTddWtrBbSaVoE3105RLjYyfIY3T3WDGRgvgKFs',
+               cons_sec='7gS45cQhJEHdfaPxJRqPt4HbFrfn5Gdgu2CK7LDg')
 print o.xauth('username', 'password')

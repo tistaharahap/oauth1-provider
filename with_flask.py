@@ -7,7 +7,7 @@ from oauth1.store.nosql import Oauth1StoreRedis
 BASE_URL = "http://localhost:5000/"
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///:memory:"    # Change this to a valid URI
+app.config['SQLALCHEMY_DATABASE_URI'] = "mysql://root:@127.0.0.1:3306/oauth"    # Change this to a valid URI
 
 
 class SQLProvider(Oauth1):
@@ -16,13 +16,10 @@ class SQLProvider(Oauth1):
         store = Oauth1StoreSQLAlchemy(app=app)
         super(SQLProvider, self).__init__(base_url=BASE_URL, store=store)
 
-        # Set up new consumer
-        self.create_new_consumer_tokens(app_name='Test app', app_desc='Just Testing', app_platform='CLI',
-                                        app_url=BASE_URL)
-
     def _verify_xauth_credentials(self, username, password):
         return username == 'username' and password == 'password'
 
+'''
 app.config['REDIS_HOST'] = '127.0.0.1'
 app.config['REDIS_PORT'] = 6379
 app.config['REDIS_DB'] = 0
@@ -36,19 +33,22 @@ class RedisProvider(Oauth1):
                                  db=app.config['REDIS_DB'], namespace=app.config['REDIS_NS'])
         super(RedisProvider, self).__init__(base_url=BASE_URL, store=store)
 
-        # Set up new consumer
-        cons = self.create_new_consumer_tokens(app_name='Test app', app_desc='Just Testing', app_platform='CLI',
-                                               app_url=BASE_URL)
-        print cons
-
     def _verify_xauth_credentials(self, username, password):
         return username == 'username' and password == 'password'
-
+'''
 # For SQL Store
 auth = SQLProvider()
 
+@app.teardown_appcontext
+def tear_app(exception=None):
+    auth.store.session.remove()
+
 # For Redis Store
 #auth = RedisProvider()
+
+# Create new consumer app
+auth.create_new_consumer_tokens(app_name='Test App %d' % Oauth1StoreSQLAlchemy.get_unix_time(),
+                                app_desc='Just Testing', app_platform='CLI', app_url=BASE_URL)
 
 @app.route('/oauth/', methods=['GET', 'POST'])
 @app.route('/oauth/<action>', methods=['POST'])

@@ -27,16 +27,15 @@ class Oauth1StoreSQLAlchemy(Oauth1StoreBase):
         self.db = create_engine(db_uri, convert_unicode=True)
         self.db.echo = True
 
+        self.get_session()
+
+    def get_session(self):
         self.session = scoped_session(sessionmaker(autocommit=False,
                                                    autoflush=False,
                                                    bind=self.db))
 
         Base.query = self.session.query_property()
         Base.metadata.create_all(bind=self.db)
-
-        @app.teardown_appcontext
-        def shutdown_session(exception=None):
-            self.session.remove()
 
     def nonce_is_declared(self, nonce):
         q = NonceModel.query.filter(NonceModel.nonce_key == nonce).first()
@@ -72,11 +71,11 @@ class Oauth1StoreSQLAlchemy(Oauth1StoreBase):
         }
 
     def is_valid_consumer_key(self, cons_key):
-        q = ConsumerTokensModel.query.filter(ConsumerTokensModel.cons_key == cons_key).first()
+        q = self.session.query(ConsumerTokensModel).filter_by(cons_key=cons_key).first()
         return q is not None and q.cons_key == cons_key
 
     def get_consumer_secret(self, consumer_key):
-        q = ConsumerTokensModel.query.filter(ConsumerTokensModel.cons_key == consumer_key).first()
+        q = self.session.query(ConsumerTokensModel).filter_by(cons_key=consumer_key).first()
         return q.cons_sec if q is not None else None
 
     @classmethod
