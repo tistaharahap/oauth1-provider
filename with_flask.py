@@ -91,5 +91,5 @@ def not_found(error):
     return Oauth1Errors.not_found()
 
 if __name__ == "__main__":
-    app.debug = True
+    app.debug = False
     app.run()
