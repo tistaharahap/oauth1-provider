@@ -5,6 +5,7 @@ from oauth1.store.sql import Oauth1StoreSQLAlchemy
 
 BASE_URL = "http://localhost:5000/"
 app = Flask(__name__)
+app.debug = True
 app.config['SQLALCHEMY_DATABASE_URI'] = "mysql://root:@127.0.0.1:3306/oauth"    # Change this to a valid URI
 app.auth = None
 
@@ -78,5 +79,4 @@ def not_found(error):
     return Oauth1Errors.not_found()
 
 if __name__ == "__main__":
-    app.debug = True
     app.run()
