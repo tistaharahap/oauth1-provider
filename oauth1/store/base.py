@@ -1,4 +1,7 @@
 import abc
+import random
+import string
+import time
 
 
 class Oauth1StoreBase(object):
@@ -23,3 +26,11 @@ class Oauth1StoreBase(object):
     @abc.abstractmethod
     def get_consumer_secret(self, consumer_key):
         raise NotImplementedError("Method get_consumer_secret must be implemented")
+
+    @classmethod
+    def get_unix_time(cls):
+        return int(time.time())
+
+    @classmethod
+    def random_string(cls, size=6, chars=string.ascii_uppercase + string.digits + string.ascii_lowercase):
+        return ''.join(random.choice(chars) for x in range(size))
