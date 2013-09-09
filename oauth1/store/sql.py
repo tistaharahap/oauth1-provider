@@ -13,7 +13,9 @@ class Oauth1StoreSQLAlchemy(Oauth1StoreBase):
             raise ValueError('SQLALCHEMY_DATABASE_URI is required')
 
         self.db = create_engine(db_uri, convert_unicode=True)
-        self.db.echo = True
+
+        if app.debug:
+            self.db.echo = True
 
         self.get_session()
 

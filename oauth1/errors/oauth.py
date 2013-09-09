@@ -36,3 +36,7 @@ class Oauth1Errors(object):
     @classmethod
     def not_found(cls, msg='Cannot find the resource you are looking for'):
         return Oauth1Errors.create_response(404, msg)
+
+    @classmethod
+    def server_error(cls, msg='Server Error'):
+        return Oauth1Errors.create_response(500, msg)
