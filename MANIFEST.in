@@ -1,5 +1,7 @@
 include README
 include README.md
 include LICENSE
-include test.py
-include with_flask.py
+include req.py
+include with_redis.py
+include with_sql.py
+include tests/*

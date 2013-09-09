@@ -105,9 +105,6 @@ class Oauth1(object):
         return True
 
     def authorize_consumer(self):
-        print "Request Header: ", request.headers
-        print "Request Form: ", request.form
-
         if 'Authorization' in request.headers and request.headers['Authorization'][0:5].lower() == 'oauth':
             self.auth_method = 'header'
             auth = request.headers['Authorization'].replace('OAuth ', '').replace(', ', ',').split(',')
@@ -117,8 +114,6 @@ class Oauth1(object):
             self.auth_method = 'post'
         else:
             return AuthorizeErrors.missing_auth_data()
-
-        print "Auth Data: ", auth
 
         if self.auth_method == 'header':
             if 'realm' in auth and auth['realm'] != self.BASE_URL:
