@@ -1,14 +1,10 @@
 from setuptools import setup
 
-def readme():
-    with open('README') as f:
-        return f.read()
-
-setup(name='oauth1',
-      version='0.4.9',
+setup(name='oauth1-provider',
+      version='0.4.10',
       description='OAuth 1.0a Provider for Python',
-      long_description=readme(),
-      keywords='oauth xauth',
+      long_description='Initiallly focused in leveraging performance by using Redis as the primary OAuth Provider backend, user authentications can be handled differently using any other databases. Now SQLAlchemy support is added.',
+      keywords='oauth xauth provider',
       url='https://github.com/tistaharahap/oauth1-provider/',
       author='Batista Harahap',
       author_email='batista@bango29.com',
