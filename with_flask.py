@@ -16,6 +16,10 @@ class SQLProvider(Oauth1):
         store = Oauth1StoreSQLAlchemy(app=app)
         super(SQLProvider, self).__init__(base_url=BASE_URL, store=store)
 
+        # Set up new consumer
+        self.create_new_consumer_tokens(app_name='Test app', app_desc='Just Testing', app_platform='CLI',
+                                        app_url=BASE_URL)
+
     def _verify_xauth_credentials(self, username, password):
         return username == 'username' and password == 'password'
 
@@ -32,29 +36,34 @@ class RedisProvider(Oauth1):
                                  db=app.config['REDIS_DB'], namespace=app.config['REDIS_NS'])
         super(RedisProvider, self).__init__(base_url=BASE_URL, store=store)
 
+        # Set up new consumer
+        cons = self.create_new_consumer_tokens(app_name='Test app', app_desc='Just Testing', app_platform='CLI',
+                                               app_url=BASE_URL)
+        print cons
+
     def _verify_xauth_credentials(self, username, password):
         return username == 'username' and password == 'password'
 
 # For SQL Store
-oauth = SQLProvider()
+auth = SQLProvider()
 
 # For Redis Store
-#oauth = RedisProvider()
+#auth = RedisProvider()
 
 @app.route('/oauth/', methods=['GET', 'POST'])
 @app.route('/oauth/<action>', methods=['POST'])
 def oauth(action=None):
     if action == 'access_token':
-        cons_check = oauth.authorize_consumer()
+        cons_check = auth.authorize_consumer()
         if isinstance(cons_check, str):
-            return Oauth1Errors.forbidden(cons_check)
+            return Oauth1Errors.bad_request(cons_check)
 
-        authorized = oauth.authorize_request(uri='oauth/access_token')
+        authorized = auth.authorize_request(uri='oauth/access_token')
         if isinstance(authorized, str):
             return Oauth1Errors.unauthorized(authorized)
 
         # Check username/password from XAuth
-        x_check = oauth.authorize_xauth()
+        x_check = auth.authorize_xauth()
         if isinstance(x_check, str):
             return Oauth1Errors.bad_request(x_check)
 
@@ -67,11 +76,11 @@ def user(user_uri=None):
     if not user_uri:
         return Oauth1Errors.bad_request('You must supply a User URI')
     else:
-        cons_check = oauth.authorize_consumer()
+        cons_check = auth.authorize_consumer()
         if isinstance(cons_check, str):
             return Oauth1Errors.forbidden(cons_check)
 
-        authorized = oauth.authorize_request(uri='oauth/access_token')
+        authorized = auth.authorize_request(uri='oauth/access_token')
         if isinstance(authorized, str):
             return Oauth1Errors.unauthorized(authorized)
 

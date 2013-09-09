@@ -61,8 +61,8 @@ class Oauth1StoreSQLAlchemy(Oauth1StoreBase):
 
         return {
             'app_id': app_id,
-            'consumer_key': tokens['cons_key'],
-            'consumer_secret': tokens['cons_sec']
+            'consumer_key': tokens['consumer_key'],
+            'consumer_secret': tokens['consumer_secret']
         }
 
     def _generate_new_consumer_tokens(self):
