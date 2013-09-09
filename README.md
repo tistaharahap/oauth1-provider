@@ -131,6 +131,9 @@ if __name__ == "__main__":
 ```
 
 #### Using Redis as Store
+
+**Currently broken, need to change the whole logic**
+
 ```python
 from flask import Flask, jsonify
 from oauth1.authorize import Oauth1
