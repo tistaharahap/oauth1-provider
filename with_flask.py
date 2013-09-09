@@ -5,10 +5,9 @@ from oauth1.store.sql import Oauth1StoreSQLAlchemy
 from oauth1.store.nosql import Oauth1StoreRedis
 
 BASE_URL = "http://localhost:5000/"
-
+auth = None
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "mysql://root:@127.0.0.1:3306/oauth"    # Change this to a valid URI
-
 
 class SQLProvider(Oauth1):
 
@@ -37,7 +36,11 @@ class RedisProvider(Oauth1):
         return username == 'username' and password == 'password'
 '''
 # For SQL Store
-auth = SQLProvider()
+@app.before_first_request
+def after_run():
+    auth = SQLProvider()
+    auth.create_new_consumer_tokens(app_name='Test App %d' % Oauth1StoreSQLAlchemy.get_unix_time(),
+                                app_desc='Just Testing', app_platform='CLI', app_url=BASE_URL)
 
 @app.teardown_appcontext
 def tear_app(exception=None):
@@ -47,8 +50,10 @@ def tear_app(exception=None):
 #auth = RedisProvider()
 
 # Create new consumer app
-auth.create_new_consumer_tokens(app_name='Test App %d' % Oauth1StoreSQLAlchemy.get_unix_time(),
-                                app_desc='Just Testing', app_platform='CLI', app_url=BASE_URL)
+
+@app.route('/')
+def run_first():
+    return "Woohoo!"
 
 @app.route('/oauth/', methods=['GET', 'POST'])
 @app.route('/oauth/<action>', methods=['POST'])
