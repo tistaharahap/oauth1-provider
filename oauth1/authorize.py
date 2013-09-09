@@ -21,6 +21,9 @@ class Oauth1(object):
             raise TypeError('The OAuth Store must be a subclass of Oauth1StoreBase')
         self.store = store
 
+    def create_new_consumer_tokens(self, app_name, app_desc, app_platform, app_url):
+        return self.store.create_new_consumer_tokens(app_name, app_desc, app_platform, app_url)
+
     def authorize_request(self, uri):
         auth_headers = request.headers['Authorization'].replace('OAuth ', '').replace(', ', ',').split(',')
         auth_headers = {self.url_decode(couple[0]): self.url_decode(couple[1][1:][:-1])
@@ -102,6 +105,9 @@ class Oauth1(object):
         return True
 
     def authorize_consumer(self):
+        print "Request Header: ", request.headers
+        print "Request Form: ", request.form
+
         if 'Authorization' in request.headers and request.headers['Authorization'][0:5].lower() == 'oauth':
             self.auth_method = 'header'
             auth = request.headers['Authorization'].replace('OAuth ', '').replace(', ', ',').split(',')
@@ -111,6 +117,8 @@ class Oauth1(object):
             self.auth_method = 'post'
         else:
             return AuthorizeErrors.missing_auth_data()
+
+        print "Auth Data: ", auth
 
         if self.auth_method == 'header':
             if 'realm' in auth and auth['realm'] != self.BASE_URL:
@@ -128,7 +136,7 @@ class Oauth1(object):
             if not request.args['oauth_signature']:
                 return AuthorizeErrors.empty_oauth_signature()
 
-        if not 'oauth_consumer_key' in request.form:
+        if not 'oauth_consumer_key' in auth:
             return AuthorizeErrors.missing_consumer_key()
 
         if not self.store.is_valid_consumer_key(auth['oauth_consumer_key']):
