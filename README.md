@@ -230,3 +230,6 @@ Please give feedbacks on best practices. Pull Requests are very welcomed.
 
 - [Batista Harahap](https://github.com/tistaharahap)
 - [Fauzan Erich Emmerling](https://github.com/femmerling)
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/tistaharahap/oauth1-provider/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
